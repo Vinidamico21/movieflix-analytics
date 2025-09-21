@@ -2,23 +2,31 @@ services:
   app:
     build: ../app
     container_name: app
-    env_file: ../.env
+    env_file: ../.env # lê variáveis da RAIZ para o container
     depends_on:
-      - pg
+      pg:
+        condition: service_healthy
 
   pg:
     image: postgres:16-alpine
     container_name: pg
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - ../.env
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ../data-lake:/data-lake:ro
       - ../etl:/etl:ro
     ports:
       - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h localhost",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   nginx:
     image: nginx:alpine
@@ -27,6 +35,7 @@ services:
       - "80:80"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../web:/usr/share/nginx/html:ro
     depends_on:
       - app
 

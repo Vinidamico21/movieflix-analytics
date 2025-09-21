@@ -1,0 +1,163 @@
+openapi: 3.0.3
+info:
+  title: MovieFlix API
+  version: "1.0.0"
+  description: |
+    API para cadastro de filmes e avaliações.
+    - Health: `/api/health`
+    - Filmes: `/api/movies`
+    - Avaliações: `/api/ratings`
+
+servers:
+  - url: /api
+
+paths:
+  /health:
+    get:
+      summary: Healthcheck da API
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /movies:
+    get:
+      summary: Listar filmes
+      responses:
+        "200":
+          description: Lista de filmes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Movie"
+    post:
+      summary: Cadastrar filme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MovieCreate"
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movie"
+
+  /movies/{id}:
+    put:
+      summary: Atualizar filme
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MovieUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movie"
+        "404":
+          description: Não encontrado
+    delete:
+      summary: Remover filme
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Removido
+        "404":
+          description: Não encontrado
+
+  /ratings:
+    get:
+      summary: Listar avaliações (opcional filtrar por filme)
+      parameters:
+        - in: query
+          name: movieId
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Lista de avaliações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rating"
+    post:
+      summary: Criar avaliação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingCreate"
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "404":
+          description: Filme não encontrado
+
+components:
+  schemas:
+    Movie:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        title: { type: string, example: The Matrix }
+        year: { type: integer, example: 1999 }
+        genre: { type: string, example: Sci-Fi }
+    MovieCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        year: { type: integer }
+        genre: { type: string }
+    MovieUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        year: { type: integer }
+        genre: { type: string }
+    Rating:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        movie_id: { type: integer, example: 1 }
+        rating: { type: number, format: float, example: 9.0 }
+        created_at: { type: string, format: date-time, example: "2024-01-01T10:00:00Z" }
+    RatingCreate:
+      type: object
+      required: [movie_id, rating]
+      properties:
+        movie_id: { type: integer }
+        rating: { type: number, format: float, minimum: 0, maximum: 10, example: 8.5 }
