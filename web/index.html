@@ -22,11 +22,11 @@
 
   <section>
     <h3>Novo filme</h3>
-    <label>Título</label><input id="title" />
-    <label>Ano</label><input id="year" type="number" />
-    <label>Gênero</label><input id="genre" />
+    <label for="title">Título</label><input id="title" />
+    <label for="year">Ano</label><input id="year" type="number" />
+    <label for="genre">Gênero</label><input id="genre" />
     <button onclick="addMovie()">Adicionar</button>
-    <div id="msg1"></div>
+    <div id="msg1" role="status" aria-live="polite"></div>
   </section>
 
   <section>
@@ -40,15 +40,15 @@
 
   <section>
     <h3>Nova avaliação</h3>
-    <label>ID do filme</label><input id="movie_id" type="number" />
-    <label>Nota (0 a 10)</label><input id="rating" type="number" step="0.1" />
+    <label for="movie_id">ID do filme</label><input id="movie_id" type="number" />
+    <label for="rating">Nota (0 a 10)</label><input id="rating" type="number" step="0.1" />
     <button onclick="addRating()">Avaliar</button>
-    <div id="msg2"></div>
+    <div id="msg2" role="status" aria-live="polite"></div>
   </section>
 
   <section>
     <h3>Avaliações do filme</h3>
-    <label>ID do filme</label><input id="movie_id_q" type="number" />
+    <label for="movie_id_q">ID do filme</label><input id="movie_id_q" type="number" />
     <button onclick="loadRatings()">Ver avaliações</button>
     <table>
       <thead><tr><th>ID</th><th>Filme</th><th>Nota</th><th>Quando</th></tr></thead>
@@ -56,53 +56,126 @@
     </table>
   </section>
 
-<script>
-const api = (path, opts={}) => fetch('/api' + path, { headers:{'Content-Type':'application/json'}, ...opts });
+  <section>
+    <h3>Insights (Data Mart)</h3>
+    <button onclick="loadInsights()">Carregar insights</button>
 
-async function loadMovies(){
-  const res = await api('/movies'); const data = await res.json();
-  const tbody = document.getElementById('movies'); tbody.innerHTML='';
-  data.forEach(m => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${m.id}</td><td>${m.title}</td><td>${m.year||''}</td><td>${m.genre||''}</td>
-      <td><button onclick="delMovie(${m.id})">Excluir</button></td>`;
-    tbody.appendChild(tr);
-  });
-}
+    <h4>Top 10 por gênero</h4>
+    <table>
+      <thead><tr><th>Gênero</th><th>Título</th><th>Média</th><th>#Avaliações</th></tr></thead>
+      <tbody id="top10"></tbody>
+    </table>
 
-async function addMovie(){
-  const title = document.getElementById('title').value;
-  const year  = parseInt(document.getElementById('year').value||'');
-  const genre = document.getElementById('genre').value;
-  const res = await api('/movies',{method:'POST', body:JSON.stringify({title,year,genre})});
-  document.getElementById('msg1').textContent = res.ok ? 'Filme cadastrado!' : 'Erro ao cadastrar';
-  loadMovies();
-}
+    <h4>Média por faixa etária</h4>
+    <table>
+      <thead><tr><th>Faixa</th><th>Média</th><th>#Avaliações</th></tr></thead>
+      <tbody id="avgAge"></tbody>
+    </table>
 
-async function delMovie(id){
-  await api('/movies/' + id, { method:'DELETE' });
-  loadMovies();
-}
+    <h4>Avaliações por país</h4>
+    <table>
+      <thead><tr><th>País</th><th>#Avaliações</th></tr></thead>
+      <tbody id="byCountry"></tbody>
+    </table>
+  </section>
 
-async function addRating(){
-  const movie_id = parseInt(document.getElementById('movie_id').value);
-  const rating   = parseFloat(document.getElementById('rating').value);
-  const res = await api('/ratings',{method:'POST', body:JSON.stringify({movie_id,rating})});
-  document.getElementById('msg2').textContent = res.ok ? 'Avaliação registrada!' : 'Erro ao avaliar';
-}
+  <script>
+    // Helper para o backend Node (CRUD filmes/ratings)
+    const api = (path, opts = {}) =>
+      fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
 
-async function loadRatings(){
-  const id = document.getElementById('movie_id_q').value;
-  const res = await api('/ratings?movieId=' + id); const data = await res.json();
-  const tbody = document.getElementById('ratings'); tbody.innerHTML='';
-  data.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.id}</td><td>${r.movie_id}</td><td>${r.rating}</td><td>${r.created_at}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+    // Base para os endpoints de insights (FastAPI)
+    const INSIGHTS_BASE = 'http://localhost:8000';
 
-loadMovies();
-</script>
+    // ---- Filmes / Avaliações ----
+    async function loadMovies() {
+      const res = await api('/movies');
+      const data = await res.json();
+      const tbody = document.getElementById('movies');
+      tbody.innerHTML = '';
+      data.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${m.id}</td>
+          <td>${m.title}</td>
+          <td>${m.year ?? ''}</td>
+          <td>${m.genre ?? ''}</td>
+          <td><button onclick="delMovie(${m.id})">Excluir</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function addMovie() {
+      const title = document.getElementById('title').value;
+      const year  = parseInt(document.getElementById('year').value || '');
+      const genre = document.getElementById('genre').value;
+      const res = await api('/movies', { method: 'POST', body: JSON.stringify({ title, year, genre }) });
+      document.getElementById('msg1').textContent = res.ok ? 'Filme cadastrado!' : 'Erro ao cadastrar';
+      loadMovies();
+    }
+
+    async function delMovie(id) {
+      await api('/movies/' + id, { method: 'DELETE' });
+      loadMovies();
+    }
+
+    async function addRating() {
+      const movie_id = parseInt(document.getElementById('movie_id').value);
+      const rating   = parseFloat(document.getElementById('rating').value);
+      const res = await api('/ratings', { method: 'POST', body: JSON.stringify({ movie_id, rating }) });
+      document.getElementById('msg2').textContent = res.ok ? 'Avaliação registrada!' : 'Erro ao avaliar';
+    }
+
+    async function loadRatings() {
+      const id = document.getElementById('movie_id_q').value;
+      const res = await api('/ratings?movieId=' + id);
+      const data = await res.json();
+      const tbody = document.getElementById('ratings');
+      tbody.innerHTML = '';
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td>${r.movie_id}</td>
+          <td>${r.rating}</td>
+          <td>${r.created_at}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ---- Insights do Data Mart ----
+    async function loadInsights() {
+      try {
+        const [a, b, c] = await Promise.all([
+          fetch(`${INSIGHTS_BASE}/api/insights/top10-by-genre`).then(r => {
+            if (!r.ok) throw new Error('top10-by-genre ' + r.status);
+            return r.json();
+          }),
+          fetch(`${INSIGHTS_BASE}/api/insights/avg-by-age`).then(r => {
+            if (!r.ok) throw new Error('avg-by-age ' + r.status);
+            return r.json();
+          }),
+          fetch(`${INSIGHTS_BASE}/api/insights/by-country`).then(r => {
+            if (!r.ok) throw new Error('by-country ' + r.status);
+            return r.json();
+          })
+        ]);
+
+        document.getElementById('top10').innerHTML =
+          a.map(x => `<tr><td>${x.genre ?? ''}</td><td>${x.title}</td><td>${(+x.avg_rating).toFixed(2)}</td><td>${x.n_ratings}</td></tr>`).join('');
+
+        document.getElementById('avgAge').innerHTML =
+          b.map(x => `<tr><td>${x.age_range}</td><td>${(+x.avg_rating).toFixed(2)}</td><td>${x.n}</td></tr>`).join('');
+
+        document.getElementById('byCountry').innerHTML =
+          c.map(x => `<tr><td>${x.country}</td><td>${x.n}</td></tr>`).join('');
+      } catch (e) {
+        alert('Falha ao carregar insights: ' + e.message);
+      }
+    }
+
+    // Carrega lista de filmes ao abrir
+    loadMovies();
+  </script>
 </body>
 </html>

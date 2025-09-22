@@ -92,3 +92,16 @@ app.get('/ratings', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`API running on :${PORT}`));
+ 
+app.get('/api/insights/top10', async (req,res)=>{
+  const { rows } = await pool.query('select * from mart.top10_by_genre');
+  res.json(rows);
+});
+app.get('/api/insights/avg-by-age', async (req,res)=>{
+  const { rows } = await pool.query('select * from mart.avg_rating_by_age');
+  res.json(rows);
+});
+app.get('/api/insights/by-country', async (req,res)=>{
+  const { rows } = await pool.query('select * from mart.ratings_by_country');
+  res.json(rows);
+}); 
