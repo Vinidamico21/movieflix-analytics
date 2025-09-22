@@ -9,18 +9,25 @@ Aplicação simples para cadastrar filmes e avaliações, com um pipeline de dad
 - **Py (FastAPI, 8000)**: ETL (carrega/trata CSVs) e APIs de insights
 - **PostgreSQL**: DW e views do Data Mart
 
-## Estrutura
+## Estrutura do projeto
 
-movieflix-analytics/
-├─ web/ # index.html (front simples)
-├─ app/ # Node (CRUD)
-├─ docker/ # compose e Dockerfile do ETL
-├─ nginx/nginx.conf # proxy
-├─ data-lake/
-│ ├─ raw_v1/ # CSVs brutos (entrada do ETL)
-│ └─ normalized_v1/ # CSVs tratados (saída do ETL)
-├─ app.py # FastAPI: ETL + insights + export
-└─ requirements.txt
+- **web/** – frontend simples (`index.html`) que lista/cadastra filmes, avalia e mostra insights.
+- **app/** – API Node (porta 3000) para CRUD:
+  - `GET/POST/DELETE /api/movies`
+  - `GET /api/ratings?movieId=...`
+  - `POST /api/ratings`
+- **app.py** – FastAPI (porta 8000): ETL + insights + export:
+  - ETL: lê `data-lake/raw_v1/*.csv` → carrega `stg.*` → cria `dw.*` → cria views `mart.*`
+  - Insights: `/api/insights/*` e métricas em `/api/quality/metrics`
+  - Export: CSVs tratados em `data-lake/normalized_v1/`
+- **data-lake/**
+  - `raw_v1/` — **entrada** (CSV brutos: `movies.csv`, `users.csv`, `ratings.csv`)
+  - `normalized_v1/` — **saída** (DW e marts em CSV)
+- **nginx/nginx.conf** – proxy:
+  - `/` → web
+  - `/api` → app:3000
+  - `/api/insights`, `/api/quality` → py:8000
+- **docker/** – `docker-compose.local.yml` (sobe pg, app, py e nginx) e `Dockerfile.etl`.
 
 ## Como subir
 
